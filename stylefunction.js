@@ -15,7 +15,10 @@ import derefLayers from '@mapbox/mapbox-gl-style-spec/deref';
 import glfun from '@mapbox/mapbox-gl-style-spec/function';
 import createFilter from '@mapbox/mapbox-gl-style-spec/feature_filter';
 import mb2css from 'mapbox-to-css-font';
-import {deg2rad, getZoomForResolution} from './util';
+import {
+  deg2rad,
+  getZoomForResolution
+} from './util';
 
 const functionTypes = {
   'line-miter-limit': 'interpolated',
@@ -89,6 +92,7 @@ const types = {
 };
 
 const functionCache = {};
+
 function getValue(layerId, layoutOrPaint, property, zoom, properties) {
   if (!functionCache[layerId]) {
     functionCache[layerId] = {};
@@ -101,14 +105,14 @@ function getValue(layerId, layoutOrPaint, property, zoom, properties) {
     }
     functions[property] = glfun(value, {
       function: functionTypes[property],
-      type: property.indexOf('color') !== -1 ? 'color' :
-        typeof value == 'object' && value.stops && typeof value.stops[0][0] == 'number' ? 'number' : undefined
+      type: property.indexOf('color') !== -1 ? 'color' : typeof value == 'object' && value.stops && typeof value.stops[0][0] == 'number' ? 'number' : undefined
     });
   }
   return functions[property](zoom, properties);
 }
 
 const fontMap = {};
+
 function chooseFont(fonts, availableFonts) {
   if (fontMap[fonts]) {
     return fontMap[fonts];
@@ -132,14 +136,13 @@ function chooseFont(fonts, availableFonts) {
 }
 
 const filterCache = {};
+
 function evaluateFilter(layerId, filter, feature) {
-  if (!(layerId in filterCache)) {
-    filterCache[layerId] = createFilter(filter);
-  }
   return filterCache[layerId](feature);
 }
 
 const colorCache = {};
+
 function colorWithOpacity(color, opacity) {
   if (color && opacity !== undefined) {
     let colorData = colorCache[color];
@@ -164,6 +167,7 @@ function colorWithOpacity(color, opacity) {
 }
 
 const templateRegEx = /^([^]*)\{(.*)\}([^]*)$/;
+
 function fromTemplate(text, properties) {
   let parts;
   do {
@@ -212,7 +216,7 @@ const emptyObj = {};
  * @return {ol.style.StyleFunction} Style function for use in
  * `ol.layer.Vector` or `ol.layer.VectorTile`.
  */
-export default function(olLayer, glStyle, source, resolutions, spriteData, spriteImageUrl, fonts) {
+export default function (olLayer, glStyle, source, resolutions, spriteData, spriteImageUrl, fonts) {
   if (!resolutions) {
     resolutions = [];
     for (let res = 78271.51696402048; resolutions.length < 21; res /= 2) {
@@ -230,7 +234,7 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
   if (spriteImageUrl) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = function() {
+    img.onload = function () {
       spriteImage = img;
       spriteImgSize = [img.width, img.height];
       olLayer.changed();
@@ -240,6 +244,39 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
 
   const ctx = document.createElement('CANVAS').getContext('2d');
   const measureCache = {};
+  const textHeightsCache = {};
+  const textSizeCache = {};
+  let span;
+
+  function measureTextHeight(font) {
+    let height = textHeightsCache[font];
+    if (height == undefined) {
+      if (!span) {
+        span = document.createElement('span');
+        span.textContent = 'M';
+        span.style.margin = span.style.padding = '0 !important';
+        span.style.position = 'absolute !important';
+        span.style.left = '-99999px !important';
+      }
+      span.style.font = font;
+      document.body.appendChild(span);
+      height = measureTextHeight[font] = span.offsetHeight;
+      document.body.removeChild(span);
+    }
+    return height;
+  }
+
+  function caculateTextSize(font) {
+    let textsize = textSizeCache[font];
+    if (!textsize) {
+      ctx.font = font;
+      var oneEm = ctx.measureText('M').width;
+      var wholeHeight = measureTextHeight(font);
+      textSizeCache[font] = textsize = [oneEm, wholeHeight];
+    }
+    return textsize;
+  }
+
   function wrapText(text, font, em) {
     const key = em + ',' + font + ',' + text;
     let wrappedText = measureCache[key];
@@ -277,11 +314,19 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
   for (let i = 0, ii = allLayers.length; i < ii; ++i) {
     const layer = allLayers[i];
     if (typeof source == 'string' && layer.source == source ||
-        source.indexOf(layer.id) !== -1) {
+      source.indexOf(layer.id) !== -1) {
       const sourceLayer = layer['source-layer'];
       if (!mapboxSource) {
         mapboxSource = layer.source;
       }
+
+      if (layer.filter) {
+        var layerId = layer.id;
+        if (!(layerId in filterCache)) {
+          filterCache[layerId] = createFilter(layer.filter);
+        }
+      }
+
       let layers = layersBySourceLayer[sourceLayer];
       if (!layers) {
         layers = layersBySourceLayer[sourceLayer] = [];
@@ -300,8 +345,9 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
   const iconImageCache = {};
 
   const styles = [];
+  const patternCache = {};
 
-  const styleFunction = function(feature, resolution) {
+  const styleFunction = function (feature, resolution) {
     const properties = feature.getProperties();
     const layers = layersBySourceLayer[properties.layer];
     if (!layers) {
@@ -309,7 +355,7 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
     }
     let zoom = resolutions.indexOf(resolution);
     if (zoom == -1) {
-      zoom = getZoomForResolution(resolution, resolutions);
+      zoom = Math.round(getZoomForResolution(resolution, resolutions));
     }
     const type = types[feature.getGeometry().getType()];
     const f = {
@@ -322,21 +368,58 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
       const layer = layerData.layer;
       const layerId = layer.id;
       // TODO revisit when diffing gets added
-      delete functionCache[layerId];
-      delete filterCache[layerId];
 
       const layout = layer.layout || emptyObj;
       const paint = layer.paint || emptyObj;
       if (layout.visibility === 'none' || ('minzoom' in layer && zoom < layer.minzoom) ||
-          ('maxzoom' in layer && zoom >= layer.maxzoom)) {
+        ('maxzoom' in layer && zoom >= layer.maxzoom)) {
         continue;
       }
       const filter = layer.filter;
+      let icon, iconImg;
       if (!filter || evaluateFilter(layerId, filter, f)) {
         let color, opacity, fill, stroke, strokeColor, style;
         const index = layerData.index;
         if (type == 3) {
-          if (!('fill-pattern' in paint) && 'fill-color' in paint) {
+          if ('fill-pattern' in paint) {
+            const iconImage = getValue(layerId, paint, 'fill-pattern', zoom, properties);
+            if (iconImage) {
+              icon = fromTemplate(iconImage, properties);
+              if (spriteImage && spriteData && spriteData[icon]) {
+                ++stylesLength;
+                style = styles[stylesLength];
+                if (!style || !style.getFill() || style.getStroke() || style.getText()) {
+                  style = styles[stylesLength] = new Style({
+                    fill: new Fill()
+                  });
+                }
+                fill = style.getFill();
+                style.setZIndex(index);
+                let pattern = patternCache[icon];
+                if (!pattern) {
+                  const spriteImageData = spriteData[icon];
+                  const canvas = document.createElement('canvas');
+                  canvas.width = spriteImageData.width;
+                  canvas.height = spriteImageData.height;
+                  const ctx = canvas.getContext('2d');
+                  ctx.drawImage(
+                    spriteImage,
+                    spriteImageData.x,
+                    spriteImageData.y,
+                    spriteImageData.width,
+                    spriteImageData.height,
+                    0,
+                    0,
+                    spriteImageData.width,
+                    spriteImageData.height
+                  );
+                  pattern = ctx.createPattern(canvas, 'repeat');
+                  patternCache[icon] = pattern;
+                }
+                fill.setColor(pattern);
+              }
+            }
+          } else if ('fill-color' in paint) {
             opacity = getValue(layerId, paint, 'fill-opacity', zoom, properties);
             color = colorWithOpacity(getValue(layerId, paint, 'fill-color', zoom, properties), opacity);
             if (color) {
@@ -393,7 +476,7 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
             stroke.setColor(color);
             stroke.setWidth(width);
             stroke.setLineDash(paint['line-dasharray'] ?
-              getValue(layerId, paint, 'line-dasharray', zoom, properties).map(function(x) {
+              getValue(layerId, paint, 'line-dasharray', zoom, properties).map(function (x) {
                 return x * width;
               }) : null);
             style.setZIndex(index);
@@ -402,7 +485,7 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
 
         let hasImage = false;
         let text = null;
-        let icon, iconImg, skipLabel;
+        let skipLabel;
         if ((type == 1 || type == 2) && 'icon-image' in layout) {
           const iconImage = getValue(layerId, layout, 'icon-image', zoom, properties);
           if (iconImage) {
@@ -416,8 +499,7 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
                   const extent = geom.getExtent();
                   const size = Math.sqrt(Math.max(
                     Math.pow((extent[2] - extent[0]) / resolution, 2),
-                    Math.pow((extent[3] - extent[1]) / resolution, 2))
-                  );
+                    Math.pow((extent[3] - extent[1]) / resolution, 2)));
                   if (size > 150) {
                     //FIXME Do not hard-code a size of 150
                     styleGeom = new Point(geom.getFlatMidpoint());
@@ -563,12 +645,17 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
           const textAnchor = getValue(layerId, layout, 'text-anchor', zoom, properties);
           const placement = (hasImage || type == 1) ? 'point' : getValue(layerId, layout, 'symbol-placement', zoom, properties);
           text.setPlacement(placement);
+          const singelTextSize = caculateTextSize(font);
+          let offsetX = 0;
+          let offsetY = 0;
           if (placement == 'point') {
             let textAlign = 'center';
             if (textAnchor.indexOf('left') !== -1) {
               textAlign = 'left';
+              offsetX = singelTextSize[0] / 2;
             } else if (textAnchor.indexOf('right') !== -1) {
               textAlign = 'right';
+              offsetX = -singelTextSize[0] / 2;
             }
             text.setTextAlign(textAlign);
           } else {
@@ -577,13 +664,15 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
           let textBaseline = 'middle';
           if (textAnchor.indexOf('bottom') == 0) {
             textBaseline = 'bottom';
+            offsetY = singelTextSize[1] / 2;
           } else if (textAnchor.indexOf('top') == 0) {
             textBaseline = 'top';
+            offsetY = -singelTextSize[1] / 2;
           }
           text.setTextBaseline(textBaseline);
           const textOffset = getValue(layerId, layout, 'text-offset', zoom, properties);
-          text.setOffsetX(textOffset[0] * textSize);
-          text.setOffsetY(textOffset[1] * textSize);
+          text.setOffsetX(textOffset[0] * textSize + offsetX);
+          text.setOffsetY(textOffset[1] * textSize - offsetY);
           opacity = getValue(layerId, paint, 'text-opacity', zoom, properties);
           textColor.setColor(colorWithOpacity(getValue(layerId, paint, 'text-color', zoom, properties), opacity));
           text.setFill(textColor);
