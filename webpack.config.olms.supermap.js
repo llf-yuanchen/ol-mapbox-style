@@ -1,5 +1,15 @@
 const path = require('path');
-
+const webpack = require('webpack');
+const pkg = require('./package.json');
+const banner = `
+    ol-mapbox-style
+    Copyright 2016-present Boundless Spatial
+    Copyright© 2000-2018 SuperMap Software Co. Ltd
+    github: https://github.com/boundlessgeo/ol-mapbox-style
+    github: https://github.com/SuperMap/ol-mapbox-style
+    license: BSD 2-Clause "Simplified" License
+    version: v${pkg.version}
+`;
 module.exports = {
   entry: './olms.js',
   devtool: 'source-map',
@@ -15,6 +25,7 @@ module.exports = {
   externals: {
     'ol/style/Style': 'ol.style.Style',
     'ol/style/Circle': 'ol.style.Circle',
+    'ol/style/Text': 'ol.style.Text',
     'ol/style/Icon': 'ol.style.Icon',
     'ol/style/Stroke': 'ol.style.Stroke',
     'ol/style/Fill': 'ol.style.Fill',
@@ -33,6 +44,9 @@ module.exports = {
     'ol/source/VectorTile': 'ol.source.VectorTile',
     'ol/source/XYZ': 'ol.source.XYZ'
   },
+  plugins: [
+    new webpack.BannerPlugin(banner)
+  ],
   module: {
     rules: [
       {

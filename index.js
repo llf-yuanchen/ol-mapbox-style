@@ -10,7 +10,7 @@ import applyStyleFunction from './stylefunction';
 import googleFonts from 'webfont-matcher/lib/fonts/google';
 import {fromLonLat} from 'ol/proj';
 import {createXYZ} from 'ol/tilegrid';
-import CanvasMap from 'ol/CanvasMap';
+import Map from 'ol/Map';
 import GeoJSON from 'ol/format/GeoJSON';
 import MVT from 'ol/format/MVT';
 import {unByKey} from 'ol/Observable';
@@ -101,10 +101,11 @@ function toSpriteUrl(url, path, extension) {
  * are provided, they must be from layers that use the same source.
  * @param {string} [path=undefined] Path of the style file. Only required when
  * a relative path is used with the `"sprite"` property of the style.
+ * @param {Array<number>} [resolutions=undefined] Resolutions for mapping resolution to zoom level.
  * @return {Promise} Promise which will be resolved when the style can be used
  * for rendering.
  */
-export function applyStyle(layer, glStyle, source, path) {
+export function applyStyle(layer, glStyle, source, path, resolutions) {
   return new Promise(function(resolve, reject) {
 
     if (typeof glStyle != 'object') {
@@ -148,7 +149,7 @@ export function applyStyle(layer, glStyle, source, path) {
     var style;
     function onChange() {
       if (!style && (!glStyle.sprite || spriteData) && (!availableFonts || availableFonts.length > 0)) {
-        style = applyStyleFunction(layer, glStyle, source, undefined, spriteData, spriteImageUrl, availableFonts);
+        style = applyStyleFunction(layer, glStyle, source, resolutions, spriteData, spriteImageUrl, availableFonts);
         resolve();
       } else if (style) {
         layer.setStyle(style);
@@ -463,8 +464,8 @@ export function apply(map, style) {
   var accessToken, baseUrl, host, path;
   accessToken = baseUrl = host = path = '';
 
-  if (!(map instanceof CanvasMap)) {
-    map = new CanvasMap({
+  if (!(map instanceof Map)) {
+    map = new Map({
       target: map
     });
   }
