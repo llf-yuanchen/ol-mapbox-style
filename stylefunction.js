@@ -337,10 +337,6 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
     delete functionCache[layerId];
     delete filterCache[layerId];
   }
-
-  const textHalo = new Stroke();
-  const textColor = new Fill();
-
   const iconImageCache = {};
 
   const styles = [];
@@ -650,10 +646,10 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
             let textAlign = 'center';
             if (textAnchor.indexOf('left') !== -1) {
               textAlign = 'left';
-              offsetX = singelTextSize[0] / 2;
+              offsetX = singelTextSize[0] / 4;
             } else if (textAnchor.indexOf('right') !== -1) {
               textAlign = 'right';
-              offsetX = -singelTextSize[0] / 2;
+              offsetX = -singelTextSize[0] / 4;
             }
             text.setTextAlign(textAlign);
           } else {
@@ -662,20 +658,23 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
           let textBaseline = 'middle';
           if (textAnchor.indexOf('bottom') == 0) {
             textBaseline = 'bottom';
-            offsetY = singelTextSize[1] / 2;
+            offsetY = singelTextSize[1] / 4;
           } else if (textAnchor.indexOf('top') == 0) {
             textBaseline = 'top';
-            offsetY = -singelTextSize[1] / 2;
+            offsetY = -singelTextSize[1] / 4;
           }
           text.setTextBaseline(textBaseline);
           const textOffset = getValue(layerId, layout, 'text-offset', zoom, properties);
           text.setOffsetX(textOffset[0] * textSize + offsetX);
           text.setOffsetY(textOffset[1] * textSize - offsetY);
           opacity = getValue(layerId, paint, 'text-opacity', zoom, properties);
+          const textColor = new Fill();
+         
           textColor.setColor(colorWithOpacity(getValue(layerId, paint, 'text-color', zoom, properties), opacity));
           text.setFill(textColor);
           const haloColor = colorWithOpacity(getValue(layerId, paint, 'text-halo-color', zoom, properties), opacity);
           if (haloColor) {
+            const textHalo = new Stroke();
             textHalo.setColor(haloColor);
             textHalo.setWidth(getValue(layerId, paint, 'text-halo-width', zoom, properties));
             text.setStroke(textHalo);
