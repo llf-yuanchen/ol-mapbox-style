@@ -70,6 +70,7 @@ const defaults = {
   'text-halo-width': 0,
   'text-max-width': 10,
   'text-offset': [0, 0],
+  'text-translate': [0, 0],
   'text-opacity': 1,
   'text-rotate': 0,
   'text-size': 16,
@@ -247,38 +248,6 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
 
   const ctx = document.createElement('CANVAS').getContext('2d');
   const measureCache = {};
-  const textHeightsCache = {};
-  const textSizeCache = {};
-  let span;
-
-  function measureTextHeight(font) {
-    let height = textHeightsCache[font];
-    if (height == undefined) {
-      if (!span) {
-        span = document.createElement('span');
-        span.textContent = 'M';
-        span.style.margin = span.style.padding = '0 !important';
-        span.style.position = 'absolute !important';
-        span.style.left = '-99999px !important';
-      }
-      span.style.font = font;
-      document.body.appendChild(span);
-      height = measureTextHeight[font] = span.offsetHeight;
-      document.body.removeChild(span);
-    }
-    return height;
-  }
-
-  function caculateTextSize(font) {
-    let textsize = textSizeCache[font];
-    if (!textsize) {
-      ctx.font = font;
-      var oneEm = ctx.measureText('M').width;
-      var wholeHeight = measureTextHeight(font);
-      textSizeCache[font] = textsize = [oneEm, wholeHeight];
-    }
-    return textsize;
-  }
 
   function wrapText(text, font, em) {
     const key = em + ',' + font + ',' + text;
@@ -639,17 +608,12 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
           const textAnchor = getValue(layerId, layout, 'text-anchor', zoom, properties);
           const placement = (hasImage || type == 1) ? 'point' : getValue(layerId, layout, 'symbol-placement', zoom, properties);
           text.setPlacement(placement);
-          const singelTextSize = caculateTextSize(font);
-          let offsetX = 0;
-          let offsetY = 0;
           if (placement == 'point') {
             let textAlign = 'center';
             if (textAnchor.indexOf('left') !== -1) {
               textAlign = 'left';
-              offsetX = singelTextSize[0] / 4;
             } else if (textAnchor.indexOf('right') !== -1) {
               textAlign = 'right';
-              offsetX = -singelTextSize[0] / 4;
             }
             text.setTextAlign(textAlign);
           } else {
@@ -658,18 +622,17 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
           let textBaseline = 'middle';
           if (textAnchor.indexOf('bottom') == 0) {
             textBaseline = 'bottom';
-            offsetY = singelTextSize[1] / 4;
           } else if (textAnchor.indexOf('top') == 0) {
             textBaseline = 'top';
-            offsetY = -singelTextSize[1] / 4;
           }
           text.setTextBaseline(textBaseline);
           const textOffset = getValue(layerId, layout, 'text-offset', zoom, properties);
-          text.setOffsetX(textOffset[0] * textSize + offsetX);
-          text.setOffsetY(textOffset[1] * textSize - offsetY);
+          var textTranslate = getValue(layerId, paint, 'text-translate', zoom, properties);
+          text.setOffsetX(textOffset[0] * textSize + textTranslate[0]);
+          text.setOffsetY(textOffset[1] * textSize + textTranslate[1]);
           opacity = getValue(layerId, paint, 'text-opacity', zoom, properties);
           const textColor = new Fill();
-         
+
           textColor.setColor(colorWithOpacity(getValue(layerId, paint, 'text-color', zoom, properties), opacity));
           text.setFill(textColor);
           const haloColor = colorWithOpacity(getValue(layerId, paint, 'text-halo-color', zoom, properties), opacity);
