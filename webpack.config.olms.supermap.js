@@ -12,7 +12,6 @@ const banner = `
 `;
 module.exports = {
   entry: './olms.js',
-  devtool: 'source-map',
   node: {fs: 'empty'},
   mode: 'production',
   output: {

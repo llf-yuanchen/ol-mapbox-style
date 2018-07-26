@@ -63,7 +63,7 @@
     "start": "webpack-dev-server --config ./webpack.config.js",
     "prepare": "npm run doc && npm run build",
     "build": "webpack-cli --config ./webpack.config.olms.js",
-    "build-supermap": "webpack-cli --config ./webpack.config.olms.supermap.js && webpack-cli --config ./webpack.config.olms.supermap.js --output-filename olms-debug.js --mode development",
+    "build-supermap": "webpack-cli --config ./webpack.config.olms.supermap.js && webpack-cli --config ./webpack.config.olms.supermap.js --output-filename olms-debug.js --mode development --devtool inline-source-map",
     "doc": "documentation readme -s API index.js",
     "lint": "eslint __test__ example *.js",
     "pretest": "npm run lint",

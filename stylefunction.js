@@ -33,10 +33,15 @@ const functionTypes = {
   'text-size': 'interpolated',
   'icon-opacity': 'interpolated',
   'icon-rotate': 'interpolated',
+  'icon-anchor': 'interpolated',
+  'icon-offset': 'interpolated',
+  'icon-translate': 'interpolated',
+  'icon-translate-anchor': 'interpolated',
   'icon-size': 'interpolated',
   'icon-color': 'interpolated',
   'circle-radius': 'interpolated',
   'circle-opacity': 'interpolated',
+  'circle-stroke-opacity': 'interpolated',
   'circle-stroke-width': 'interpolated',
   'circle-color': 'interpolated',
   'circle-stroke-color': 'interpolated',
@@ -76,10 +81,15 @@ const defaults = {
   'text-size': 16,
   'icon-opacity': 1,
   'icon-rotate': 0,
+  'icon-offset': [0, 0],
+  'icon-translate': [0, 0],
+  'icon-translate-anchor': 'map',
+  'icon-anchor': 'center',
   'icon-size': 1,
   'circle-color': '#000000',
   'circle-stroke-color': '#000000',
   'circle-opacity': 1,
+  'circle-stroke-opacity': 1,
   'circle-stroke-width': 0
 };
 
@@ -110,6 +120,34 @@ function getValue(layerId, layoutOrPaint, property, zoom, properties) {
     });
   }
   return functions[property](zoom, properties);
+}
+
+function covertIconAnchor(iconAnchor) {
+  let anchorOffset = [0.5, 0.5];
+  if (['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(iconAnchor)) {
+    anchorOffset = [0, 0];
+  }
+  if (iconAnchor === 'left') {
+    iconAnchor = 'top-left';
+    anchorOffset = [0, 0.5];
+  }
+  if (iconAnchor === 'right') {
+    iconAnchor = 'top-left';
+    anchorOffset = [1, 0.5];
+  }
+  if (iconAnchor === 'bottom') {
+    iconAnchor = 'top-left';
+    anchorOffset = [0.5, 1];
+  }
+  if (iconAnchor === 'top') {
+    iconAnchor = 'top-left';
+    anchorOffset = [0.5, 0];
+  }
+  //center
+  return {
+    anchorOffset: anchorOffset,
+    iconAnchor: iconAnchor
+  };
 }
 
 const fontMap = {};
@@ -313,6 +351,7 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
 
   const styleFunction = function (feature, resolution) {
     const properties = feature.getProperties();
+    feature.styleIds = feature.styleIds || {};
     const layers = layersBySourceLayer[properties.layer];
     if (!layers) {
       return;
@@ -338,6 +377,7 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
         ('maxzoom' in layer && zoom >= layer.maxzoom)) {
         continue;
       }
+      feature.styleIds[zoom] = feature.styleIds[zoom] || [];
       const filter = layer.filter;
       let icon, iconImg;
       if (!filter || evaluateFilter(layerId, filter, f)) {
@@ -350,6 +390,9 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
               icon = fromTemplate(iconImage, properties);
               if (spriteImage && spriteData && spriteData[icon]) {
                 ++stylesLength;
+                if (feature.styleIds[zoom].indexOf(layerId) === -1) {
+                  feature.styleIds[zoom].push(layerId);
+                }
                 style = styles[stylesLength];
                 if (!style || !style.getFill() || style.getStroke() || style.getText()) {
                   style = styles[stylesLength] = new Style({
@@ -387,6 +430,9 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
             color = colorWithOpacity(getValue(layerId, paint, 'fill-color', zoom, properties), opacity);
             if (color) {
               ++stylesLength;
+              if (feature.styleIds[zoom].indexOf(layerId) === -1) {
+                feature.styleIds[zoom].push(layerId);
+              }
               style = styles[stylesLength];
               if (!style || !style.getFill() || style.getStroke() || style.getText()) {
                 style = styles[stylesLength] = new Style({
@@ -399,9 +445,14 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
             }
             if ('fill-outline-color' in paint) {
               strokeColor = colorWithOpacity(getValue(layerId, paint, 'fill-outline-color', zoom, properties), opacity);
+            } else if ('fill-antialias' in paint) {
+              strokeColor = color;
             }
             if (strokeColor) {
               ++stylesLength;
+              if (feature.styleIds[zoom].indexOf(layerId) === -1) {
+                feature.styleIds[zoom].push(layerId);
+              }
               style = styles[stylesLength];
               if (!style || !style.getStroke() || style.getFill() || style.getText()) {
                 style = styles[stylesLength] = new Style({
@@ -426,6 +477,9 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
           const width = getValue(layerId, paint, 'line-width', zoom, properties);
           if (color && width > 0) {
             ++stylesLength;
+            if (feature.styleIds[zoom].indexOf(layerId) === -1) {
+              feature.styleIds[zoom].push(layerId);
+            }
             style = styles[stylesLength];
             if (!style || !style.getStroke() || style.getFill() || style.getText()) {
               style = styles[stylesLength] = new Style({
@@ -471,6 +525,9 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
               }
               if (type !== 2 || styleGeom) {
                 ++stylesLength;
+                if (feature.styleIds[zoom].indexOf(layerId) === -1) {
+                  feature.styleIds[zoom].push(layerId);
+                }
                 style = styles[stylesLength];
                 if (!style || !style.getImage() || style.getFill() || style.getStroke()) {
                   style = styles[stylesLength] = new Style();
@@ -478,54 +535,61 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
                 style.setGeometry(styleGeom);
                 const iconSize = getValue(layerId, layout, 'icon-size', zoom, properties);
                 const iconColor = paint['icon-color'] !== undefined ? getValue(layerId, paint, 'icon-color', zoom, properties) : null;
-                let icon_cache_key = icon + '.' + iconSize;
+                const iconTranslate = getValue(layerId, paint, 'icon-translate', zoom, properties);
+                const iconTranslateAnchor = getValue(layerId, paint, 'icon-translate-anchor', zoom, properties);
+                const iconAnchorValue = getValue(layerId, layout, 'icon-anchor', zoom, properties);
+                const iconOffset = getValue(layerId, layout, 'icon-offset', zoom, properties);
+                let {
+                  anchorOffset,
+                  iconAnchor = iconAnchorValue
+                } = covertIconAnchor(iconAnchorValue);
+                let icon_cache_key = icon + '.' + iconSize + '.' + iconTranslate + '.' + iconTranslateAnchor + '.' + iconAnchor + '.' + iconOffset;
                 if (iconColor !== null) {
                   icon_cache_key += '.' + iconColor;
                 }
                 iconImg = iconImageCache[icon_cache_key];
                 if (!iconImg) {
                   const spriteImageData = spriteData[icon];
+                  const canvas = document.createElement('canvas');
+                  canvas.width = spriteImageData.width;
+                  canvas.height = spriteImageData.height;
+                  const ctx = canvas.getContext('2d');
+                  ctx.drawImage(
+                    spriteImage,
+                    spriteImageData.x,
+                    spriteImageData.y,
+                    spriteImageData.width,
+                    spriteImageData.height,
+                    0,
+                    0,
+                    spriteImageData.width,
+                    spriteImageData.height
+                  );
+                  const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
                   if (iconColor !== null) {
                     // cut out the sprite and color it
                     color = colorWithOpacity(iconColor, 1);
-                    const canvas = document.createElement('canvas');
-                    canvas.width = spriteImageData.width;
-                    canvas.height = spriteImageData.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(
-                      spriteImage,
-                      spriteImageData.x,
-                      spriteImageData.y,
-                      spriteImageData.width,
-                      spriteImageData.height,
-                      0,
-                      0,
-                      spriteImageData.width,
-                      spriteImageData.height
-                    );
-                    const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
                     for (let c = 0, cc = data.data.length; c < cc; c += 4) {
                       data.data[c] = color[0];
                       data.data[c + 1] = color[1];
                       data.data[c + 2] = color[2];
                     }
-                    ctx.putImageData(data, 0, 0);
-                    iconImg = iconImageCache[icon_cache_key] = new Icon({
-                      img: canvas,
-                      imgSize: [canvas.width, canvas.height],
-                      scale: iconSize / spriteImageData.pixelRatio
-                    });
-                  } else {
-                    iconImg = iconImageCache[icon_cache_key] = new Icon({
-                      img: spriteImage,
-                      imgSize: spriteImgSize,
-                      size: [spriteImageData.width, spriteImageData.height],
-                      offset: [spriteImageData.x, spriteImageData.y],
-                      scale: iconSize / spriteImageData.pixelRatio
-                    });
                   }
+                  ctx.putImageData(data, 0, 0);
+                  const translateOffset = [iconTranslate[0] / spriteImageData.width, iconTranslate[1] / spriteImageData.height];
+                  iconImg = iconImageCache[icon_cache_key] = new Icon({
+                    img: canvas,
+                    anchorOrigin: iconAnchor,
+                    anchor: [iconOffset[0] + anchorOffset[0] + translateOffset[0], iconOffset[1] + anchorOffset[1] - translateOffset[1]],
+                    imgSize: [canvas.width, canvas.height],
+                    scale: iconSize / spriteImageData.pixelRatio
+                  });
                 }
-                iconImg.setRotation(deg2rad(getValue(layerId, layout, 'icon-rotate', zoom, properties)));
+                let rotateValue = getValue(layerId, layout, 'icon-rotate', zoom, properties);
+                if (rotateValue.indexOf && rotateValue.indexOf('{') === 0) {
+                  rotateValue = 360 - fromTemplate(rotateValue, properties);
+                }
+                iconImg.setRotation(deg2rad(rotateValue));
                 iconImg.setOpacity(getValue(layerId, paint, 'icon-opacity', zoom, properties));
                 style.setImage(iconImg);
                 text = style.getText();
@@ -542,6 +606,9 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
 
         if (type == 1 && 'circle-radius' in paint) {
           ++stylesLength;
+          if (feature.styleIds[zoom].indexOf(layerId) === -1) {
+            feature.styleIds[zoom].push(layerId);
+          }
           style = styles[stylesLength];
           if (!style || !style.getImage() || style.getFill() || style.getStroke()) {
             style = styles[stylesLength] = new Style();
@@ -551,15 +618,16 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
           const circleColor = getValue(layerId, paint, 'circle-color', zoom, properties);
           const circleOpacity = getValue(layerId, paint, 'circle-opacity', zoom, properties);
           const circleStrokeWidth = getValue(layerId, paint, 'circle-stroke-width', zoom, properties);
+          const circleStrokeOpacity = getValue(layerId, paint, 'circle-stroke-opacity', zoom, properties);
           const cache_key = circleRadius + '.' + circleStrokeColor + '.' +
-            circleColor + '.' + circleOpacity + '.' + circleStrokeWidth;
+            circleColor + '.' + circleOpacity + '.' + circleStrokeWidth + '.' + circleStrokeOpacity;
           iconImg = iconImageCache[cache_key];
           if (!iconImg) {
             iconImg = new Circle({
               radius: circleRadius,
               stroke: circleStrokeWidth === 0 ? undefined : new Stroke({
                 width: circleStrokeWidth,
-                color: colorWithOpacity(circleStrokeColor, circleOpacity)
+                color: colorWithOpacity(circleStrokeColor, circleStrokeOpacity)
               }),
               fill: new Fill({
                 color: colorWithOpacity(circleColor, circleOpacity)
@@ -582,6 +650,9 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
         if (label && !skipLabel) {
           if (!hasImage) {
             ++stylesLength;
+            if (feature.styleIds[zoom].indexOf(layerId) === -1) {
+              feature.styleIds[zoom].push(layerId);
+            }
             style = styles[stylesLength];
             if (!style || !style.getText() || style.getFill() || style.getStroke()) {
               style = styles[stylesLength] = new Style();
@@ -627,7 +698,7 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
           }
           text.setTextBaseline(textBaseline);
           const textOffset = getValue(layerId, layout, 'text-offset', zoom, properties);
-          var textTranslate = getValue(layerId, paint, 'text-translate', zoom, properties);
+          const textTranslate = getValue(layerId, paint, 'text-translate', zoom, properties);
           text.setOffsetX(textOffset[0] * textSize + textTranslate[0]);
           text.setOffsetY(textOffset[1] * textSize + textTranslate[1]);
           opacity = getValue(layerId, paint, 'text-opacity', zoom, properties);
