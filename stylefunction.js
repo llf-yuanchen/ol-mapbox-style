@@ -384,6 +384,7 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
         let color, opacity, fill, stroke, strokeColor, style;
         const index = layerData.index;
         if (type == 3) {
+          opacity = getValue(layerId, paint, 'fill-opacity', zoom, properties);
           if ('fill-pattern' in paint) {
             const iconImage = getValue(layerId, paint, 'fill-pattern', zoom, properties);
             if (iconImage) {
@@ -401,13 +402,15 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
                 }
                 fill = style.getFill();
                 style.setZIndex(index);
-                let pattern = patternCache[icon];
+                const icon_cache_key = icon + '.' + opacity;
+                let pattern = patternCache[icon_cache_key];
                 if (!pattern) {
                   const spriteImageData = spriteData[icon];
                   const canvas = document.createElement('canvas');
                   canvas.width = spriteImageData.width;
                   canvas.height = spriteImageData.height;
                   const ctx = canvas.getContext('2d');
+                  ctx.globalAlpha = opacity;
                   ctx.drawImage(
                     spriteImage,
                     spriteImageData.x,
@@ -420,13 +423,12 @@ export default function (olLayer, glStyle, source, resolutions, spriteData, spri
                     spriteImageData.height
                   );
                   pattern = ctx.createPattern(canvas, 'repeat');
-                  patternCache[icon] = pattern;
+                  patternCache[icon_cache_key] = pattern;
                 }
                 fill.setColor(pattern);
               }
             }
           } else if ('fill-color' in paint) {
-            opacity = getValue(layerId, paint, 'fill-opacity', zoom, properties);
             color = colorWithOpacity(getValue(layerId, paint, 'fill-color', zoom, properties), opacity);
             if (color) {
               ++stylesLength;
