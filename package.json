@@ -1,6 +1,6 @@
 {
   "name": "ol-mapbox-style",
-  "version": "3.0.0-beta.7",
+  "version": "2.11.2-1",
   "description": "Create OpenLayers maps from Mapbox Style objects",
   "main": "index.js",
   "repository": {
@@ -71,8 +71,8 @@
     "cover": "jest --coverage"
   },
   "dependencies": {
-    "@mapbox/mapbox-gl-style-spec": "^9.0.1",
-    "mapbox-to-css-font": "^2.1.0",
+    "@mapbox/mapbox-gl-style-spec": "^13.14.0",
+    "mapbox-to-css-font": "^2.4.0",
     "webfont-matcher": "^1.1.0"
   },
   "peerDependencies": {
@@ -84,7 +84,6 @@
     "babel-jest": "^23.0.0-alpha.0",
     "babel-loader": "^7.1.4",
     "babel-preset-env": "^1.6.1",
-    "canvas": "^1.6.8",
     "copy-webpack-plugin": "^4.5.1",
     "css-loader": "^0.28.11",
     "deep-freeze": "0.0.1",
@@ -104,9 +103,9 @@
     "should": "^11.2.1",
     "should-approximately-deep": "^1.1.0",
     "style-loader": "^0.20.3",
-    "webpack": "^4.1.1",
-    "webpack-cli": "^2.0.12",
-    "webpack-dev-server": "^3.1.1"
+    "webpack": "^4.41.3",
+    "webpack-cli": "^3.3.10",
+    "webpack-dev-server": "^3.9.0"
   },
   "jest": {
     "setupFiles": [

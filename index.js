@@ -4,9 +4,9 @@ Copyright 2016-present Boundless Spatial, Inc.
 License: https://raw.githubusercontent.com/boundlessgeo/ol-mapbox-gl-style/master/LICENSE
 */
 
-import glfun from '@mapbox/mapbox-gl-style-spec/function';
+import {Color} from '@mapbox/mapbox-gl-style-spec';
 import mb2css from 'mapbox-to-css-font';
-import applyStyleFunction from './stylefunction';
+import applyStyleFunction, {getValue} from './stylefunction';
 import googleFonts from 'webfont-matcher/lib/fonts/google';
 import {fromLonLat} from 'ol/proj';
 import {createXYZ} from 'ol/tilegrid';
@@ -175,6 +175,9 @@ export function applyStyle(layer, glStyle, source, path, resolutions) {
 }
 
 function setBackground(map, layer) {
+  const background = {
+    type: layer.type
+  };
   function updateStyle() {
     var element = map.getTargetElement();
     if (!element) {
@@ -182,25 +185,19 @@ function setBackground(map, layer) {
     }
     var layout = layer.layout || {};
     var paint = layer.paint || {};
+    background['paint'] = paint;
+    background.id = 'olms-bg-' + paint['background-opacity'] + paint['background-color'];
     var zoom = map.getView().getZoom();
-    if ('background-color' in paint) {
-      var bg = glfun(paint['background-color'], {function: 'interpolated', type: 'color'})(zoom);
-      if (Array.isArray(bg)) {
-        bg = 'rgba(' +
-            Math.round(bg[0] * 255) + ',' +
-            Math.round(bg[1] * 255) + ',' +
-            Math.round(bg[2] * 255) + ',' +
-            (bg[3] ? bg[3] : 1) + ')';
-      }
-      element.style.backgroundColor = bg;
+    if (paint['background-color'] !== undefined) {
+      const bg = getValue(background, 'paint', 'background-color', zoom, {});
+      element.style.background = Color.parse(bg).toString();
     }
-    if ('background-opacity' in paint) {
-      element.style.backgroundOpacity =
-          glfun(paint['background-opacity'], {function: 'interpolated', type: 'number'})(zoom);
+    if (paint['background-opacity'] !== undefined) {
+      element.style.opacity = getValue(background, 'paint', 'background-opacity', zoom, {});
     }
     if (layout.visibility == 'none') {
       element.style.backgroundColor = '';
-      element.style.backgroundOpacity = '';
+      element.style.opacity = '';
     }
   }
   if (map.getTargetElement()) {
