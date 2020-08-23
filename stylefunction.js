@@ -346,7 +346,7 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
           if ('fill-pattern' in paint) {
             const iconImage = getValue(layer, 'paint', 'fill-pattern', zoom, f);
             if (iconImage) {
-              icon = fromTemplate(iconImage, properties);
+              icon = typeof iconImage === 'string' ? fromTemplate(iconImage, properties) : iconImage.toString();
               if (spriteImage && spriteData && spriteData[icon]) {
                 ++stylesLength;
                 if (feature.styleIds[zoom].indexOf(layerId) === -1) {
