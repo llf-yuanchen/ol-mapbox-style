@@ -462,7 +462,9 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
         if ((type == 1 || type == 2) && 'icon-image' in layout) {
           const iconImage = getValue(layer, 'layout', 'icon-image', zoom, f);
           if (iconImage) {
-            icon = fromTemplate(iconImage, properties);
+            icon = typeof iconImage === 'string'
+              ? fromTemplate(iconImage, properties)
+              : iconImage.toString();
             let styleGeom = undefined;
             if (spriteImage && spriteData && spriteData[icon]) {
               if (type == 2) {
@@ -641,15 +643,15 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
           const textTranslate = getValue(layer, 'paint', 'text-translate', zoom, f);
           let vOffset = 0;
           let hOffset = 0;
+          let textAlign = 'center';
+          if (textAnchor.indexOf('left') !== -1) {
+            textAlign = 'left';
+            hOffset = textHaloWidth;
+          } else if (textAnchor.indexOf('right') !== -1) {
+            textAlign = 'right';
+            hOffset = -textHaloWidth;
+          }
           if (placement == 'point') {
-            let textAlign = 'center';
-            if (textAnchor.indexOf('left') !== -1) {
-              textAlign = 'left';
-              hOffset = textHaloWidth;
-            } else if (textAnchor.indexOf('right') !== -1) {
-              textAlign = 'right';
-              hOffset = -textHaloWidth;
-            }
             text.setTextAlign(textAlign);
           } else {
             text.setMaxAngle(deg2rad(getValue(layer, 'layout', 'text-max-angle', zoom, f)) * label.length / wrappedLabel.length);
