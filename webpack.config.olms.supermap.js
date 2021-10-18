@@ -10,6 +10,42 @@ const banner = `
     license: BSD 2-Clause "Simplified" License
     version: v${pkg.version}
 `;
+const externals = {
+  'ol/style/Style': 'ol.style.Style',
+  'ol/style/Circle': 'ol.style.Circle',
+  'ol/style/Icon': 'ol.style.Icon',
+  'ol/style/Stroke': 'ol.style.Stroke',
+  'ol/style/Fill': 'ol.style.Fill',
+  'ol/style/Text': 'ol.style.Text',
+  'ol/proj': 'ol.proj',
+  'ol/tilegrid': 'ol.tilegrid',
+  'ol/tilegrid/TileGrid': 'ol.tilegrid.TileGrid',
+  'ol/format/GeoJSON': 'ol.format.GeoJSON',
+  'ol/format/MVT': 'ol.format.MVT',
+  'ol/Map': 'ol.Map',
+  'ol/View': 'ol.View',
+  'ol/Observable': 'ol.Observable',
+  'ol/layer/Tile': 'ol.layer.Tile',
+  'ol/layer/Vector': 'ol.layer.Vector',
+  'ol/layer/VectorTile': 'ol.layer.VectorTile',
+  'ol/source/TileJSON': 'ol.source.TileJSON',
+  'ol/source/Vector': 'ol.source.Vector',
+  'ol/source/VectorTile': 'ol.source.VectorTile',
+  'ol/geom/Point': 'ol.geom.Point'
+};
+
+function createExternals() {
+  const createdExternals = {};
+  for (const key in externals) {
+    createdExternals[key] = {
+      root: externals[key].split('.'),
+      commonjs: key,
+      commonjs2: key,
+      amd: key
+    };
+  }
+  return createdExternals;
+}
 module.exports = {
   entry: './olms.js',
   node: {fs: 'empty'},
@@ -18,31 +54,10 @@ module.exports = {
     path: path.resolve('./dist'), // Path of output file
     filename: 'olms.js',
     library: 'olms',
-    libraryTarget: 'assign',
+    libraryTarget: 'umd',
     libraryExport: 'default'
   },
-  externals: {
-    'ol/style/Style': 'ol.style.Style',
-    'ol/style/Circle': 'ol.style.Circle',
-    'ol/style/Text': 'ol.style.Text',
-    'ol/style/Icon': 'ol.style.Icon',
-    'ol/style/Stroke': 'ol.style.Stroke',
-    'ol/style/Fill': 'ol.style.Fill',
-    'ol/geom/Point': 'ol.geom.Point',
-    'ol/proj': 'ol.proj',
-    'ol/tilegrid': 'ol.tilegrid',
-    'ol/format/GeoJSON': 'ol.format.GeoJSON',
-    'ol/format/MVT': 'ol.format.MVT',
-    'ol/Map': 'ol.Map',
-    'ol/Observable': 'ol.Observable',
-    'ol/layer/Tile': 'ol.layer.Tile',
-    'ol/layer/Vector': 'ol.layer.Vector',
-    'ol/layer/VectorTile': 'ol.layer.VectorTile',
-    'ol/source/TileJSON': 'ol.source.TileJSON',
-    'ol/source/Vector': 'ol.source.Vector',
-    'ol/source/VectorTile': 'ol.source.VectorTile',
-    'ol/source/XYZ': 'ol.source.XYZ'
-  },
+  externals: createExternals(),
   plugins: [
     new webpack.BannerPlugin(banner)
   ],

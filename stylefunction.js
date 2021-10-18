@@ -94,7 +94,7 @@ export function getValue(layer, layoutOrPaint, property, zoom, feature) {
 
 function covertIconAnchor(iconAnchor) {
   let anchorOffset = [0.5, 0.5];
-  if (['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(iconAnchor)) {
+  if (['top-left', 'top-right', 'bottom-left', 'bottom-right'].indexOf(iconAnchor) > -1) {
     anchorOffset = [0, 0];
   }
   if (iconAnchor === 'left') {
