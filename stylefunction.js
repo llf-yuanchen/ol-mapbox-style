@@ -245,6 +245,27 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
   const ctx = document.createElement('CANVAS').getContext('2d');
   const measureCache = {};
 
+  function wrapChineseText(text, maxWidth, ctx) {
+    var textWidth = ctx.measureText(text).width;
+    if (textWidth > maxWidth) {
+      let res = [];
+      let temp = [];
+      let splitText = text.split('');
+      splitText.forEach((singleText) => {
+        let tempText = temp.join('') + singleText;
+        if (ctx.measureText(tempText).width > maxWidth) {
+          res.push(temp.join(''));
+          temp = [singleText];
+        } else {
+          temp.push(singleText);
+        }
+      })
+      res.push(temp.join(''));
+      return res;
+    }
+    return [text];
+  }
+
   function wrapText(text, font, em) {
     const key = em + ',' + font + ',' + text;
     let wrappedText = measureCache[key];
@@ -252,7 +273,12 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
       ctx.font = font;
       const oneEm = ctx.measureText('M').width;
       const width = oneEm * em;
-      const words = text.split(' ');
+      var words = [];
+      if (/[\u4E00-\u9FA5]+/.test(text)) {
+        words = wrapChineseText(text, width, ctx);
+      } else {
+        words = text.split(' ');
+      }
       let line = '';
       const lines = [];
       for (let i = 0, ii = words.length; i < ii; ++i) {
@@ -671,7 +697,7 @@ export default function(olLayer, glStyle, source, resolutions, spriteData, sprit
           opacity = getValue(layer, 'paint', 'text-opacity', zoom, f);
           const textColor = new Fill();
 
-          textColor.setColor(colorWithOpacity(getValue(layer, 'paint', 'text-color', zoom, f), opacity));
+          textColor.setColor(colorWithOpacity(getValue(layer, 'paint', 'text-color', zoom, f), opacity) ||'rgba(0,0,0,0)');
           text.setFill(textColor);
           const haloColor = colorWithOpacity(getValue(layer, 'paint', 'text-halo-color', zoom, f), opacity);
           if (haloColor) {
