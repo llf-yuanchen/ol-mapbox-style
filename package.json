@@ -76,7 +76,7 @@
     "webfont-matcher": "^1.1.0"
   },
   "peerDependencies": {
-    "ol": ">=5.0.0-beta.13 <5.0.0-c"
+    "ol": ">=5.0.0-beta.13"
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
